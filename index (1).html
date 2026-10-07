@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,7 +11,7 @@ header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:
 .logo{width:48px;height:48px;filter:drop-shadow(0 0 10px rgba(255,194,60,.7))}
 h1{margin:0;font-size:24px;letter-spacing:1px;color:var(--gold);text-shadow:0 0 18px rgba(255,194,60,.5)}
 .sub{font-size:12px;color:var(--mute)}
-.live{margin-left:auto;display:flex;align-items:center;gap:7px;font-weight:bold;font-size:13px;color:var(--red)}
+.live{margin-left:6px;display:flex;align-items:center;gap:7px;font-weight:bold;font-size:13px;color:var(--red)}
 .live i{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,109,.7)}100%{box-shadow:0 0 0 12px rgba(255,77,109,0)}}
 @keyframes slide{from{transform:translateY(-18px);opacity:0}to{transform:none;opacity:1}}
@@ -53,9 +54,25 @@ input,select{background:#0a0612;color:var(--text);border:1px solid var(--line);b
 .stat em{font-style:normal;font-size:22px}
 .stat b{display:block;font-size:18px;color:var(--gold);margin-top:2px}.stat span{font-size:12px;color:var(--mute)}
 li{margin-bottom:8px}.done{text-decoration:line-through;color:var(--mute)}
+.rolebox{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute)}
+#rolebar{padding:8px 22px;font-size:13px;background:rgba(255,194,60,.1);border-bottom:1px solid var(--line);color:var(--mute)}
+#rolebar b{color:var(--gold)}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+button:disabled:hover{border-color:var(--line)}
+input:disabled,select:disabled{opacity:.4;cursor:not-allowed}
+.logbody{max-height:280px;overflow-y:auto;font-family:"Courier New",monospace;font-size:13px}
+.lg{display:flex;gap:10px;padding:5px 2px;border-bottom:1px solid var(--line);align-items:baseline}
+.lg:first-child{animation:slide .5s}
+.ts{color:var(--mute);flex:none}
+.rl{flex:none;padding:0 7px;border-radius:8px;font-size:11px;font-weight:bold}
+.r-admin{background:var(--gold);color:#201400}.r-captain{background:var(--blue);color:#001}.r-housemate{background:#3b2f5c;color:var(--text)}
+.lg-deny span:last-child{color:var(--red)}
+.lg-role span:last-child{color:var(--blue)}
+.lg-nom span:last-child{color:#ff9bb0}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
-<header><svg class="logo" viewBox="0 0 64 64"><path d="M4 32C14 14 50 14 60 32 50 50 14 50 4 32Z" fill="none" stroke="#ffc23c" stroke-width="4"/><circle cx="32" cy="32" r="11" fill="#ffc23c"/><circle cx="32" cy="32" r="5" fill="#0a0612"/></svg><div><h1>BIG BOSS HOUSE</h1><div class="sub">Control room, Round 1</div></div><div class="live"><i></i>LIVE</div></header>
+<header><svg class="logo" viewBox="0 0 64 64"><path d="M4 32C14 14 50 14 60 32 50 50 14 50 4 32Z" fill="none" stroke="#ffc23c" stroke-width="4"/><circle cx="32" cy="32" r="11" fill="#ffc23c"/><circle cx="32" cy="32" r="5" fill="#0a0612"/></svg><div><h1>BIG BOSS HOUSE</h1><div class="sub">Control room, Round 4</div></div><div class="rolebox"><label for="role">Role</label><select id="role" onchange="setRole(this.value)"><option value="admin">Big Boss (Admin)</option><option value="captain">House Captain</option><option value="housemate">Housemate</option></select></div><div class="live"><i></i>LIVE</div></header>
+<div id="rolebar"></div>
 <div id="banner"></div>
 <main id="app"></main>
 <script>
@@ -63,59 +80,86 @@ const SEED=[["Aarav","Team Alpha"],["Diya","Team Alpha"],["Kabir","Team Beta"],[
 let S;
 try{S=JSON.parse(localStorage.getItem("bb"))}catch(e){}
 if(!S)S={n:9,ppl:SEED.map((d,i)=>({id:i+1,name:d[0],team:d[1],pts:0,out:false,cap:false,nom:false,imm:false})),tasks:[],tn:1,ann:"",log:[],left:2700,run:false};
+S.al=S.al||[];S.endAt=S.endAt||0;if(S.run&&!S.endAt)S.run=false;
 const save=()=>{try{localStorage.setItem("bb",JSON.stringify(S))}catch(e){}};
 const P=id=>S.ppl.find(p=>p.id===id);
 const live=()=>S.ppl.filter(p=>!p.out);
 const act=fn=>{fn();save();render()};
 const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-
-function addP(){const n=document.getElementById("nn").value.trim(),t=document.getElementById("nt").value.trim()||"No team";if(!n)return;act(()=>S.ppl.push({id:S.n++,name:n,team:t,pts:0,out:false,cap:false,nom:false,imm:false}))}
-function pts(id,d){act(()=>P(id).pts+=d)}
-function setCap(id){act(()=>S.ppl.forEach(p=>p.cap=p.id===id&&!p.cap))}
-function nominate(id){const p=P(id);if(p.imm){alert(p.name+" has immunity and cannot be nominated.");return}act(()=>p.nom=!p.nom)}
-function immune(id){act(()=>{const p=P(id);p.imm=!p.imm;if(p.imm)p.nom=false})}
-function evict(id){const p=P(id);if(!confirm("Evict "+p.name+"?"))return;act(()=>{p.out=true;p.cap=p.nom=p.imm=false})}
-function addTask(){const w=+document.getElementById("tw").value,t=document.getElementById("tt").value.trim();if(!w||!t)return;act(()=>S.tasks.push({id:S.tn++,who:w,text:t,done:false}))}
-function doneTask(id){act(()=>{const t=S.tasks.find(x=>x.id===id);t.done=!t.done})}
-function announce(){const t=document.getElementById("an").value.trim();if(!t)return;act(()=>{S.ann=t;S.log.unshift(t)})}
-function clearAnn(){act(()=>S.ann="")}
-function tStart(){act(()=>S.run=S.left>0)}
-function tPause(){act(()=>S.run=false)}
-function tReset(){act(()=>{S.run=false;S.left=2700})}
-setInterval(()=>{if(S.run){S.left--;if(S.left<=0){S.left=0;S.run=false}save();const e=document.getElementById("time");if(e)e.textContent=fmt(S.left);const r=document.getElementById("ring");if(r)r.style.strokeDashoffset=339.3*(1-S.left/2700)}},1000);
-
+ 
+const ROLES={admin:"Big Boss (Admin)",captain:"House Captain",housemate:"Housemate"};
+const PIN={admin:"bigboss",captain:"captain"};
+const PERM={admin:["add","pts","cap","nom","imm","evict","task","done","ann","timer","clearlog"],captain:["pts","nom","task","done","timer"],housemate:[]};
+const NAMES={add:"add contestants",pts:"adjust points",cap:"change captain",nom:"nominate",imm:"grant immunity",evict:"evict",task:"assign tasks",done:"complete tasks",ann:"announcements",timer:"timer control",clearlog:"clear log"};
+let ROLE=sessionStorage.getItem("bbrole")||"admin";
+const can=a=>PERM[ROLE].includes(a);
+const remaining=()=>S.run?Math.max(0,Math.ceil((S.endAt-Date.now())/1000)):S.left;
+function logA(text,kind){S.al.unshift({t:Date.now(),r:ROLE,k:kind||"info",x:text});S.al=S.al.slice(0,100)}
+function guard(a,what){if(can(a))return true;alert("Access denied: "+ROLES[ROLE]+" cannot "+what+".");act(()=>logA("Access denied: tried to "+what,"deny"));return false}
+function setRole(r){
+ if(r===ROLE)return;
+ if(PIN[r]){const p=prompt("Enter PIN for "+ROLES[r]+" (hint: "+PIN[r]+")");if(p!==PIN[r]){alert("Wrong PIN.");render();return}}
+ const old=ROLE;ROLE=r;try{sessionStorage.setItem("bbrole",r)}catch(e){}
+ act(()=>logA("Switched role from "+ROLES[old]+" to "+ROLES[r],"role"))
+}
+function addP(){if(!guard("add","add contestants"))return;const n=document.getElementById("nn").value.trim(),t=document.getElementById("nt").value.trim()||"No team";if(!n)return;act(()=>{S.ppl.push({id:S.n++,name:n,team:t,pts:0,out:false,cap:false,nom:false,imm:false});logA("Added contestant "+n+" ("+t+")","add")})}
+function pts(id,d){if(!guard("pts","change points"))return;act(()=>{const p=P(id);p.pts+=d;logA((d>0?"+":"")+d+" points to "+p.name+" (total "+p.pts+")","points")})}
+function setCap(id){if(!guard("cap","change the captain"))return;act(()=>{const p=P(id),was=p.cap;S.ppl.forEach(x=>x.cap=x.id===id&&!was);logA(was?p.name+" is no longer House Captain":p.name+" is now House Captain","captain")})}
+function nominate(id){if(!guard("nom","nominate contestants"))return;const p=P(id);if(p.imm){alert(p.name+" has immunity and cannot be nominated.");act(()=>logA("Nomination blocked: "+p.name+" has immunity","deny"));return}act(()=>{p.nom=!p.nom;logA(p.nom?p.name+" was nominated":"Nomination removed for "+p.name,"nom")})}
+function immune(id){if(!guard("imm","grant immunity"))return;act(()=>{const p=P(id);p.imm=!p.imm;if(p.imm)p.nom=false;logA(p.imm?p.name+" was granted immunity":"Immunity removed from "+p.name,"imm")})}
+function evict(id){if(!guard("evict","evict contestants"))return;const p=P(id);if(!confirm("Evict "+p.name+"?"))return;act(()=>{p.out=true;p.cap=p.nom=p.imm=false;logA(p.name+" was evicted from the house","evict")})}
+function addTask(){if(!guard("task","assign tasks"))return;const w=+document.getElementById("tw").value,t=document.getElementById("tt").value.trim();if(!w||!t)return;act(()=>{S.tasks.push({id:S.tn++,who:w,text:t,done:false});logA("Task assigned to "+P(w).name+": "+t,"task")})}
+function doneTask(id){if(!guard("done","complete tasks"))return;act(()=>{const t=S.tasks.find(x=>x.id===id);t.done=!t.done;logA(P(t.who).name+(t.done?" completed task: ":" task reopened: ")+t.text,"task")})}
+function announce(){if(!guard("ann","make announcements"))return;const t=document.getElementById("an").value.trim();if(!t)return;act(()=>{S.ann=t;S.log.unshift(t);logA("Big Boss announcement: "+t,"ann")})}
+function clearAnn(){if(!guard("ann","clear announcements"))return;act(()=>{S.ann="";logA("Announcement cleared","ann")})}
+function tStart(){if(!guard("timer","control the timer"))return;if(S.run||S.left<=0)return;act(()=>{S.endAt=Date.now()+S.left*1000;S.run=true;logA("Timer started at "+fmt(S.left),"timer")})}
+function tPause(){if(!guard("timer","control the timer"))return;if(!S.run)return;act(()=>{S.left=remaining();S.run=false;logA("Timer paused at "+fmt(S.left),"timer")})}
+function tReset(){if(!guard("timer","control the timer"))return;act(()=>{S.run=false;S.left=2700;logA("Timer reset to 45:00","timer")})}
+function clearLog(){if(!guard("clearlog","clear the activity log"))return;act(()=>{S.al=[];logA("Activity log cleared","log")})}
+function logHtml(){return S.al.map(e=>`<div class="lg lg-${e.k}"><span class="ts">${new Date(e.t).toLocaleTimeString()}</span><span class="rl r-${e.r}">${esc(e.r.toUpperCase())}</span><span>${esc(e.x)}</span></div>`).join("")||"<p class='empty'>No activity yet. Actions appear here instantly.</p>"}
+function renderLog(){const el=document.getElementById("logbody");if(el)el.innerHTML=logHtml()}
+setInterval(()=>{if(!S.run)return;const r=remaining();const e=document.getElementById("time");if(e)e.textContent=fmt(r);const g=document.getElementById("ring");if(g)g.style.strokeDashoffset=339.3*(1-r/2700);if(r<=0)act(()=>{S.run=false;S.left=0;logA("Timer finished","timer")})},1000);
+window.addEventListener("storage",e=>{if(e.key!=="bb"||!e.newValue)return;try{S=JSON.parse(e.newValue)}catch(x){return}S.al=S.al||[];const a=document.activeElement;if(a&&(a.tagName==="INPUT"||(a.tagName==="SELECT"&&a.id!=="role")))renderLog();else render()});
+ 
 const hue=t=>[...t].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360;
 const av=p=>`<span class="av" style="background:hsl(${hue(p.team)},60%,42%)">${esc(p.name.slice(0,2).toUpperCase())}</span>`;
 function render(){
 const L=live(),rank=[...L].sort((a,b)=>b.pts-a.pts),nom=L.filter(p=>p.nom);
 const done=S.tasks.filter(t=>t.done).length,top=rank[0],low=rank[rank.length-1],cap=L.find(p=>p.cap);
 const b=document.getElementById("banner");b.style.display=S.ann?"block":"none";b.innerHTML=S.ann?"Big Boss says: "+esc(S.ann):"";
+const dis=a=>can(a)?"":' disabled title="Not allowed for your role"';
+document.getElementById("role").value=ROLE;
+document.getElementById("rolebar").innerHTML="Signed in as <b>"+ROLES[ROLE]+"</b>. Allowed: "+(PERM[ROLE].length?PERM[ROLE].map(x=>NAMES[x]).join(", "):"view only");
 document.getElementById("app").innerHTML=`
 <section class="wide"><h2>Contestants</h2>
-<div class="row"><input id="nn" placeholder="Name"><input id="nt" placeholder="Team"><button onclick="addP()">Add contestant</button></div>
+<div class="row"><input id="nn" placeholder="Name"${dis("add")}><input id="nt" placeholder="Team"${dis("add")}><button${dis("add")} onclick="addP()">Add contestant</button></div>
 <table><tr><th>Name</th><th>Team</th><th>Points</th><th>Status</th><th>Actions</th></tr>
 ${S.ppl.map(p=>`<tr class="${p.out?"out":""}"><td>${av(p)}${esc(p.name)}${p.cap?'<span class="tag cap">Captain</span>':""}</td><td>${esc(p.team)}</td><td>${p.pts}</td>
 <td>${p.out?"Evicted":"Active"}${p.imm?'<span class="tag imm">Immune</span>':""}${p.nom?'<span class="tag nom">Nominated</span>':""}</td>
-<td>${p.out?"":`<button onclick="pts(${p.id},10)">+10</button> <button onclick="pts(${p.id},-10)">-10</button>
-<button class="${p.cap?"on":""}" onclick="setCap(${p.id})">Captain</button>
-<button class="${p.nom?"on":""}" onclick="nominate(${p.id})">Nominate</button>
-<button class="${p.imm?"on":""}" onclick="immune(${p.id})">Immunity</button>
-<button class="bad" onclick="evict(${p.id})">Evict</button>`}</td></tr>`).join("")}</table></section>
-
+<td>${p.out?"":`<button${dis("pts")} onclick="pts(${p.id},10)">+10</button> <button${dis("pts")} onclick="pts(${p.id},-10)">-10</button>
+<button${dis("cap")} class="${p.cap?"on":""}" onclick="setCap(${p.id})">Captain</button>
+<button${dis("nom")} class="${p.nom?"on":""}" onclick="nominate(${p.id})">Nominate</button>
+<button${dis("imm")} class="${p.imm?"on":""}" onclick="immune(${p.id})">Immunity</button>
+<button${dis("evict")} class="bad" onclick="evict(${p.id})">Evict</button>`}</td></tr>`).join("")}</table></section>
+ 
 <section><h2>Live leaderboard</h2>
 ${rank.map((p,i)=>`<div class="lb"><span class="rk">${["🥇","🥈","🥉"][i]||i+1}</span>${av(p)}<span class="nm">${esc(p.name)}</span><div class="bar"><i style="width:${Math.max(4,Math.round(Math.max(p.pts,0)/Math.max(...rank.map(x=>x.pts),10)*100))}%"></i></div><b>${p.pts}</b></div>`).join("")||"<p class='empty'>No active contestants.</p>"}</section>
-
+ 
 <section class="danger"><h2>Danger zone</h2>${nom.map(p=>`<div class="dz">${av(p)}<div><b>${esc(p.name)}</b><br><small>${esc(p.team)}</small></div><span class="tag nom" style="margin-left:auto">NOMINATED</span></div>`).join("")||"<p class='empty'>Nobody is nominated. The house is safe.</p>"}</section>
-
-<section><h2>Tasks</h2><div class="row"><select id="tw">${L.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><input id="tt" placeholder="Task"><button onclick="addTask()">Assign task</button></div>
-<ul>${S.tasks.map(t=>`<li class="${t.done?"done":""}">${esc(P(t.who).name)}: ${esc(t.text)} <button onclick="doneTask(${t.id})">${t.done?"Undo":"Mark complete"}</button></li>`).join("")||"<li style='color:var(--mute)'>No tasks yet.</li>"}</ul></section>
-
-<section><h2>Task timer</h2><div class="ringbox"><svg width="150" height="150"><circle cx="75" cy="75" r="54" fill="none" stroke="#32244f" stroke-width="10"/><circle id="ring" cx="75" cy="75" r="54" fill="none" stroke="#5ab0ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" style="stroke-dashoffset:${339.3*(1-S.left/2700)};transition:stroke-dashoffset 1s linear"/></svg><div id="time">${fmt(S.left)}</div></div><div class="row" style="justify-content:center"><button class="go" onclick="tStart()">Start</button><button onclick="tPause()">Pause</button><button class="bad" onclick="tReset()">Reset</button></div></section>
-
-<section><h2>Big Boss announcement</h2><div class="row"><input id="an" placeholder="Type an announcement" style="flex:1"><button onclick="announce()">Announce</button><button onclick="clearAnn()">Clear</button></div>
+ 
+<section><h2>Tasks</h2><div class="row"><select id="tw"${dis("task")}>${L.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><input id="tt" placeholder="Task"${dis("task")}><button${dis("task")} onclick="addTask()">Assign task</button></div>
+<ul>${S.tasks.map(t=>`<li class="${t.done?"done":""}">${esc(P(t.who).name)}: ${esc(t.text)} <button${dis("done")} onclick="doneTask(${t.id})">${t.done?"Undo":"Mark complete"}</button></li>`).join("")||"<li style='color:var(--mute)'>No tasks yet.</li>"}</ul></section>
+ 
+<section><h2>Task timer</h2><div class="ringbox"><svg width="150" height="150"><circle cx="75" cy="75" r="54" fill="none" stroke="#32244f" stroke-width="10"/><circle id="ring" cx="75" cy="75" r="54" fill="none" stroke="#5ab0ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" style="stroke-dashoffset:${339.3*(1-remaining()/2700)};transition:stroke-dashoffset 1s linear"/></svg><div id="time">${fmt(remaining())}</div></div><div class="row" style="justify-content:center"><button${dis("timer")} class="go" onclick="tStart()">Start</button><button${dis("timer")} onclick="tPause()">Pause</button><button${dis("timer")} class="bad" onclick="tReset()">Reset</button></div></section>
+ 
+<section><h2>Big Boss announcement</h2><div class="row"><input id="an" placeholder="Type an announcement" style="flex:1"${dis("ann")}><button${dis("ann")} onclick="announce()">Announce</button><button${dis("ann")} onclick="clearAnn()">Clear</button></div>
 <ul>${S.log.slice(0,5).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>
-
+ 
+<section class="wide"><h2>Live activity log <span class="tag nom">LIVE</span></h2>
+<div class="row"><button${dis("clearlog")} class="bad" onclick="clearLog()">Clear log</button></div>
+<div id="logbody" class="logbody">${logHtml()}</div></section>
+ 
 <section class="wide"><h2>House statistics</h2><div class="stat">
 <div><em>🏆</em><b>${top?esc(top.name)+" ("+top.pts+")":"-"}</b><span>Highest scorer</span></div>
 <div><em>📉</em><b>${low?esc(low.name)+" ("+low.pts+")":"-"}</b><span>Lowest scorer</span></div>
@@ -128,3 +172,4 @@ ${rank.map((p,i)=>`<div class="lb"><span class="rk">${["🥇","🥈","🥉"][i]|
 }
 render();
 </script></body></html>
+ 
